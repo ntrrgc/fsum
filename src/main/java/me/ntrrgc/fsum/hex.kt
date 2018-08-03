@@ -1,7 +1,5 @@
 package me.ntrrgc.fsum
 
-import java.nio.ByteBuffer
-
 private fun halfByteToHex(num: Int): Char {
     assert(num in 0..15)
     return when {
@@ -19,15 +17,14 @@ private fun hexToHalfByte(char: Char): Int {
     }
 }
 
-class IllegalHexException(message: String) : Throwable() {
-
-}
+class IllegalHexException(message: String) : Exception(message)
 
 fun ByteArray.toHexString(): String {
     val ret = StringBuilder(this.size * 2)
     this.forEach { byte ->
-        val highPart = byte.toInt() ushr 4
-        val lowPart = byte.toInt() and 0x0f
+        val unsignedByte = byte.toInt() and 0xff
+        val highPart = unsignedByte ushr 4
+        val lowPart = unsignedByte and 0x0f
         ret.append(halfByteToHex(highPart))
         ret.append(halfByteToHex(lowPart))
     }
@@ -35,16 +32,17 @@ fun ByteArray.toHexString(): String {
 }
 
 fun parseHexString(string: String): ByteArray {
-    if (string.length % 2 == 0) {
+    if (string.length % 2 != 0) {
         throw IllegalHexException("Hex string with odd number of characters: ${string}")
     }
-    val ret = ByteBuffer.allocate(string.length / 2)
+    val lowerCaseString = string.toLowerCase()
+    val ret = ByteArray(lowerCaseString.length / 2)
     var i = 0
     var j = 0
     while (i < string.length) {
-        val highPart = hexToHalfByte(string[i++])
-        val lowPart = hexToHalfByte(string[i++])
-
+        val highPart = hexToHalfByte(lowerCaseString[i++])
+        val lowPart = hexToHalfByte(lowerCaseString[i++])
+        ret[j++] = ((highPart shl 4) or lowPart).toByte()
     }
-
+    return ret
 }
