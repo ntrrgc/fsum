@@ -31,3 +31,21 @@ compileKotlin {
 compileTestKotlin {
     kotlinOptions.jvmTarget = "1.8"
 }
+
+jar {
+    manifest {
+        attributes(
+                'Class-Path': configurations.getByName("runtimeClasspath")
+                        .collect { "vendor/" + it.getName() }
+                        .join(' '),
+                'Main-Class': 'me.ntrrgc.fsum.MainKt'
+        )
+    }
+}
+
+task copyDependencies(type: Copy) {
+    from configurations.getByName("runtimeClasspath")
+    into new File((File)project.libsDir, "vendor")
+}
+
+task jarWithDependencies(dependsOn: ["copyDependencies", "jar"])
