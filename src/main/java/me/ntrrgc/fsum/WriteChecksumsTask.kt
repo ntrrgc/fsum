@@ -6,7 +6,11 @@ import io.reactivex.schedulers.Schedulers
 import java.io.File
 import java.security.MessageDigest
 
-class WriteChecksumsTask(val rootPath: String, val overwriteExistingChecksums: Boolean): FSumTask() {
+class WriteChecksumsTask(
+        val rootPath: String,
+        val overwriteExistingChecksums: Boolean,
+        private val maxCountJobs: Int = (System.getenv("FSUM_JOBS") ?: "10").toInt()
+): FSumTask() {
     private interface CompletedFolderChecksumTask {
         val folder: Folder
         val existingInventory: FolderInventory?
@@ -94,7 +98,7 @@ class WriteChecksumsTask(val rootPath: String, val overwriteExistingChecksums: B
                             }
                             .onErrorReturn { ex -> CompletedFileChecksumTask.Failed(fileChecksumTask, ex) }
                             .toFlowable()
-                }, 10)
+                }, maxCountJobs)
                 .observeOn(Schedulers.single())
                 .flatMap { completedFileChecksumTask ->
                     val folderTask = completedFileChecksumTask.fileChecksumTask.folderChecksumTask
