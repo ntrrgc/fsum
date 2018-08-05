@@ -64,7 +64,7 @@ object DirectoryLister {
 
                     val files = entries.filter { it.isFile }
                             .filter { it.name != inventoryFileName }
-                            .map { ArchiveFile(it.name) }
+                            .map { ArchiveFile(it.name, it.length()) }
 
                     val subdirectories = entries.filter { it.isDirectory }
                     subdirectories.asReversed().forEach { subdirectory ->

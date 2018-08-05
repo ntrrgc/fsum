@@ -20,7 +20,8 @@ data class Warning(
 )
 
 data class ArchiveFile(
-        val name: String
+        val name: String,
+        val size: Long
 )
 
 data class Folder(
@@ -183,7 +184,13 @@ fun createChecksums(rootPath: String, skipFilesThatAlreadyHaveChecksums: Boolean
             }
 }
 
+data class ProgressReport(
+        val sizeDone: Long = 0L,
+        val sizeTotal: Long?
+)
+
 fun main(args: Array<String>) {
+    val progress = UnicastProcessor.create<ProgressReport>()
     val warnings = UnicastProcessor.create<Warning>()
 
     createChecksums("/home/ntrrgc/tmp/test-archive", true, warnings)
