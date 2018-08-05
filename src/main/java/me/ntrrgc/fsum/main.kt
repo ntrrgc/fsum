@@ -4,6 +4,7 @@ import io.reactivex.Flowable
 import io.reactivex.functions.BiConsumer
 import io.reactivex.functions.Consumer
 import io.reactivex.plugins.RxJavaPlugins
+import jnr.posix.*
 import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
@@ -83,7 +84,20 @@ data class ProgressReport(
         val sizeTotal: Long?
 )
 
+fun setProcessLowPriority() {
+    val linux = POSIXFactory.getNativePOSIX() as Linux
+    if (0 != linux.ioprio_set(LinuxIoPrio.IOPRIO_WHO_PGRP, 0, LinuxIoPrio.IOPRIO_PRIO_VALUE(LinuxIoPrio.IOPRIO_CLASS_IDLE, 0)))
+        throw RuntimeException("Could not set I/O priority: ${linux.strerror(linux.errno())}")
+
+    val PRIO_PGRP = 1
+    if (0 != linux.setpriority(PRIO_PGRP, 0, 19)) {
+        throw RuntimeException("Could not set scheduling priority: ${linux.strerror(linux.errno())}")
+    }
+}
+
 fun main(args: Array<String>) {
+    setProcessLowPriority()
+
     val task = WriteChecksumsTask(rootPath = args[0], overwriteExistingChecksums = true)
     ConsoleUI(task).run()
 }

@@ -2,7 +2,7 @@ group 'me.ntrrgc'
 version '1.0-SNAPSHOT'
 
 buildscript {
-    ext.kotlin_version = '1.2.31'
+    ext.kotlin_version = '1.2.60'
 
     repositories {
         mavenCentral()
@@ -23,6 +23,7 @@ dependencies {
 
     implementation "io.reactivex.rxjava2:rxjava:2.1.12"
     implementation "me.tongfei:progressbar:0.7.1"
+    implementation group: 'com.github.jnr', name: 'jnr-posix', version: '3.0.46'
 }
 
 compileKotlin {
