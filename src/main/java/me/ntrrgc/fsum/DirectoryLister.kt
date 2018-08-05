@@ -2,7 +2,6 @@ package me.ntrrgc.fsum
 
 import io.reactivex.Flowable
 import io.reactivex.functions.BiConsumer
-import io.reactivex.processors.UnicastProcessor
 import me.ntrrgc.fsum.FolderInventory.Companion.inventoryFileName
 import java.io.File
 import java.io.IOException
@@ -37,7 +36,8 @@ object DirectoryLister {
                 ?.filter { (it.isDirectory && !shouldIgnoreDirectory(it.name)) || (it.isFile && !shouldIgnoreFile(it.name)) }
     }
 
-    fun scanDirectory(rootPath: String, warnings: UnicastProcessor<Warning>): Flowable<FolderWithOptionalInventory> {
+    fun scanDirectory(rootPath: String, incidentLogger: IncidentLogger,
+                      scanTreeProgress: TaskProgress.ScanTreeClient): Flowable<FolderWithOptionalInventory> {
         data class ScanStatus(
                 val pendingFolders: Stack<String> = Stack()
         )
@@ -55,16 +55,25 @@ object DirectoryLister {
                     val path = scanStatus.pendingFolders.pop()
                     val entries = listFiles(File(path))
                     if (entries == null) {
-                        warnings.onNext(Warning(
+                        incidentLogger.log(Incident(
+                                severity = Incident.Severity.Error,
                                 path = path,
                                 text = "Could not list directory."
                         ))
                         return@BiConsumer
                     }
 
-                    val files = entries.filter { it.isFile }
-                            .filter { it.name != inventoryFileName }
+                    val files = Flowable.fromIterable(entries)
+                            .filter { it.isFile && it.name != inventoryFileName }
                             .map { ArchiveFile(it.name, it.length()) }
+                            .doOnNext { archiveFile ->
+                                scanTreeProgress.update {
+                                    foundFileCountAtomic.incrementAndGet()
+                                    totalBytesAtomic.addAndGet(archiveFile.size)
+                                }
+                            }
+                            .toList()
+                            .blockingGet()
 
                     val subdirectories = entries.filter { it.isDirectory }
                     subdirectories.asReversed().forEach { subdirectory ->
@@ -76,13 +85,15 @@ object DirectoryLister {
                         try {
                             FolderInventory.load(folder)
                         } catch (ex: IOException) {
-                            warnings.onNext(Warning(
+                            incidentLogger.log(Incident(
+                                    severity = Incident.Severity.Error,
                                     path = folder.path,
                                     text = "I/O error when reading checksum inventory: ${ex.toString()}"
                             ))
                             return@BiConsumer
                         } catch (ex: Exception) {
-                            warnings.onNext(Warning(
+                            incidentLogger.log(Incident(
+                                    severity = Incident.Severity.Error,
                                     path = folder.path,
                                     text = "Error while parsing inventory: ${ex.toString()}"
                             ))
